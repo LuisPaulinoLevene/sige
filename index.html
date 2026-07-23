@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Escolar - SIGE</title>
+
+    <meta name="theme-color" content="#0d6efd">
+
+    <!-- Manifesto do PWA -->
+    <link rel="manifest" href="./manifest.json">
+
+    <!-- Ícone do navegador -->
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
+
+    <!-- Apple iOS -->
+    <link rel="apple-touch-icon" href="./icons/icon-192.png">
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        #app {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+
+        #loading {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+
+<div id="loading">
+    Carregando sistema...
+</div>
+
+<iframe id="app"></iframe>
+
+<script>
+
+const renderA = "https://ep-phandira-2.onrender.com";
+const renderB = "https://gestao-escolar-c43r.onrender.com";
+
+
+// Verifica servidor
+async function verificarServidor(url) {
+
+    try {
+
+        const controller = new AbortController();
+
+        const timeout = setTimeout(() => {
+            controller.abort();
+        }, 15000);
+
+        const resposta = await fetch(url + "/health", {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        return resposta.ok;
+
+    } catch (erro) {
+
+        return false;
+
+    }
+
+}
+
+
+// Define prioridade pelo dia atual
+function servidoresPorData() {
+
+    const dia = new Date().getDate();
+
+    if (dia <= 15) {
+
+        return [
+            renderA,
+            renderB
+        ];
+
+    } else {
+
+        return [
+            renderB,
+            renderA
+        ];
+
+    }
+
+}
+
+
+// Carrega o iframe
+function carregarSistema(url) {
+
+    const iframe = document.getElementById("app");
+
+    iframe.onload = function () {
+
+        document.getElementById("loading").style.display = "none";
+        iframe.style.display = "block";
+
+    };
+
+    iframe.src = url;
+
+}
+
+
+// Verificação contínua
+async function iniciar() {
+
+    while (true) {
+
+        const servidores = servidoresPorData();
+
+        for (const servidor of servidores) {
+
+            if (await verificarServidor(servidor)) {
+
+                carregarSistema(servidor);
+
+                return;
+
+            }
+
+        }
+
+        // aguarda antes de tentar novamente
+        await new Promise(resolve =>
+            setTimeout(resolve, 10000)
+        );
+
+    }
+
+}
+
+iniciar();
+
+
+// Service Worker
+if ("serviceWorker" in navigator) {
+
+    window.addEventListener("load", function () {
+
+        navigator.serviceWorker.register("./sw.js")
+        .then(function (registration) {
+
+            console.log("Service Worker registrado:", registration.scope);
+
+        })
+        .catch(function (error) {
+
+            console.log("Falha no Service Worker:", error);
+
+        });
+
+    });
+
+}
+
+</script>
+
+</body>
+</html>
